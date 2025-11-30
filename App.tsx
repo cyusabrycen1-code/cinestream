@@ -3,6 +3,8 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { MovieRow } from './components/MovieRow';
 import { MovieDetails } from './components/MovieDetails';
+import { UploadModal } from './components/UploadModal';
+import { VideoPlayer } from './components/VideoPlayer';
 import { Movie, ViewState } from './types';
 import { 
   INITIAL_FEATURED_MOVIE, 
@@ -19,6 +21,7 @@ import { fetchMoviesAI } from './services/geminiService';
 import { Loader2 } from 'lucide-react';
 
 const INITIAL_CATEGORIES = [
+  { id: 'uploads', title: 'My Uploads' },
   { id: 'trending', title: 'Trending Now' },
   { id: 'action', title: 'Adrenaline Rush' },
   { id: 'scifi', title: 'Futuristic Worlds' },
@@ -50,12 +53,18 @@ const App: React.FC = () => {
     'drama': DRAMA_MOVIES,
     'comedy': COMEDY_MOVIES,
     'horror': HORROR_MOVIES,
-    'animation': ANIMATION_MOVIES
+    'animation': ANIMATION_MOVIES,
+    'uploads': []
   });
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   
+  // Upload & Video State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null);
+  const [playingVideoTitle, setPlayingVideoTitle] = useState<string>('');
+
   // Handlers
   const handleScroll = () => {
     setIsScrolled(window.scrollY > 20);
@@ -87,9 +96,41 @@ const App: React.FC = () => {
   const handleSearch = async (query: string) => {
     setIsSearching(true);
     setCurrentView('search');
-    const results = await fetchMoviesAI(query);
-    setSearchResults(results);
-    setIsSearching(false);
+    
+    // 1. Local Search (Includes Uploads & Static Data)
+    // This ensures your uploaded video appears in search results immediately
+    const normalizedQuery = query.toLowerCase();
+    const allMovies: Movie[] = Object.values(categoryMovies).flat();
+    
+    const localResults = allMovies.filter((movie: Movie) => 
+        movie.title.toLowerCase().includes(normalizedQuery) ||
+        movie.genres.some((g: string) => g.toLowerCase().includes(normalizedQuery))
+    );
+    
+    // De-duplicate local results by ID
+    const uniqueLocalResults = Array.from(new Map(localResults.map((m: Movie) => [m.id, m])).values());
+    
+    // Set local results immediately for responsiveness
+    setSearchResults(uniqueLocalResults);
+
+    // 2. AI Search (Append results)
+    try {
+        const aiResults = await fetchMoviesAI(query);
+        setSearchResults(prev => {
+            const combined = [...prev];
+            // Only add AI results that don't duplicate existing IDs or exact titles
+            aiResults.forEach(aiMovie => {
+                if (!combined.some(m => m.id === aiMovie.id || m.title === aiMovie.title)) {
+                    combined.push(aiMovie);
+                }
+            });
+            return combined;
+        });
+    } catch (e) {
+        console.error("AI Search incomplete", e);
+    } finally {
+        setIsSearching(false);
+    }
   };
 
   const handleToggleFavorite = (id: string) => {
@@ -98,9 +139,39 @@ const App: React.FC = () => {
     );
   };
 
-  const handlePlayMovie = () => {
-    // In a real app, this would route to a player
-    alert("Playing movie... (This is a demo)");
+  const handlePlayMovie = (movie?: Movie) => {
+    const target = movie || selectedMovie;
+    if (target?.videoUrl) {
+        // If it's an uploaded video with a real URL, play it
+        setPlayingVideoTitle(target.title);
+        setPlayingVideoUrl(target.videoUrl);
+        // If details modal is open, close it
+        setSelectedMovie(null);
+    } else {
+        // Fallback for demo movies
+        alert(`Starting playback for: ${target?.title}. (Demo Mode)`);
+    }
+  };
+
+  const handleUploadMovie = (movie: Movie) => {
+      setCategoryMovies(prev => ({
+          ...prev,
+          'uploads': [movie, ...prev.uploads]
+      }));
+  };
+  
+  const handleDeleteMovie = (movieId: string) => {
+      if (confirm('Are you sure you want to delete this video?')) {
+          setCategoryMovies(prev => ({
+              ...prev,
+              'uploads': prev.uploads.filter(m => m.id !== movieId)
+          }));
+          setFavorites(prev => prev.filter(id => id !== movieId));
+          
+          if (selectedMovie?.id === movieId) {
+              setSelectedMovie(null);
+          }
+      }
   };
 
   const getFavoritesMovies = () => {
@@ -123,6 +194,7 @@ const App: React.FC = () => {
         currentView={currentView} 
         onNavigate={setCurrentView}
         isScrolled={isScrolled}
+        onUploadClick={() => setShowUploadModal(true)}
       />
 
       {/* Main Content Area */}
@@ -134,19 +206,24 @@ const App: React.FC = () => {
             <Hero 
                 movies={CAROUSEL_MOVIES} 
                 onInfoClick={setSelectedMovie} 
-                onPlayClick={handlePlayMovie}
+                onPlayClick={() => handlePlayMovie(CAROUSEL_MOVIES[0])}
             />
             
             <div className="relative z-20 -mt-24 md:-mt-48 pl-0 space-y-4 bg-gradient-to-t from-black via-black to-transparent pt-12">
-               {INITIAL_CATEGORIES.map(cat => (
-                  <MovieRow 
-                    key={cat.id} 
-                    title={cat.title} 
-                    movies={categoryMovies[cat.id] || []} 
-                    onMovieClick={setSelectedMovie}
-                    isLarge={cat.id === 'trending'} 
-                  />
-               ))}
+               {INITIAL_CATEGORIES.map(cat => {
+                   // Only show uploads row if there are uploads
+                   if (cat.id === 'uploads' && (!categoryMovies['uploads'] || categoryMovies['uploads'].length === 0)) return null;
+
+                   return (
+                    <MovieRow 
+                        key={cat.id} 
+                        title={cat.title} 
+                        movies={categoryMovies[cat.id] || []} 
+                        onMovieClick={setSelectedMovie}
+                        isLarge={cat.id === 'trending' || cat.id === 'uploads'} 
+                    />
+                   );
+               })}
             </div>
           </div>
         )}
@@ -155,7 +232,7 @@ const App: React.FC = () => {
         {currentView === 'search' && (
           <div className="pt-24 px-4 sm:px-6 lg:px-8 min-h-screen animate-fade-in">
             <h2 className="text-2xl font-bold mb-6 text-white">Search Results</h2>
-            {isSearching ? (
+            {isSearching && searchResults.length === 0 ? (
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="animate-spin text-red-600 w-12 h-12" />
               </div>
@@ -246,14 +323,35 @@ const App: React.FC = () => {
         </div>
       </footer>
 
+      {/* Upload Modal */}
+      {showUploadModal && (
+          <UploadModal 
+            onClose={() => setShowUploadModal(false)}
+            onUpload={handleUploadMovie}
+          />
+      )}
+
+      {/* Video Player Overlay */}
+      {playingVideoUrl && (
+          <VideoPlayer 
+            videoUrl={playingVideoUrl}
+            title={playingVideoTitle}
+            onClose={() => {
+                setPlayingVideoUrl(null);
+                setPlayingVideoTitle('');
+            }}
+          />
+      )}
+
       {/* Modal */}
       {selectedMovie && (
         <MovieDetails 
           movie={selectedMovie} 
           onClose={() => setSelectedMovie(null)} 
-          onPlay={handlePlayMovie}
+          onPlay={() => handlePlayMovie(selectedMovie)}
           isFavorite={favorites.includes(selectedMovie.id)}
           onToggleFavorite={handleToggleFavorite}
+          onDelete={selectedMovie.id.startsWith('upload-') ? handleDeleteMovie : undefined}
         />
       )}
     </div>

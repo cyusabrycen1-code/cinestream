@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Play, Plus, ThumbsUp, Volume2, VolumeX } from 'lucide-react';
+import { X, Play, Plus, ThumbsUp, Volume2, VolumeX, Trash2 } from 'lucide-react';
 import { Movie } from '../types';
 
 interface MovieDetailsProps {
@@ -8,9 +8,10 @@ interface MovieDetailsProps {
   onPlay: () => void;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay, isFavorite, onToggleFavorite }) => {
+export const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPlay, isFavorite, onToggleFavorite, onDelete }) => {
   const [muted, setMuted] = useState(false);
   
   // Close on escape
@@ -63,9 +64,21 @@ export const MovieDetails: React.FC<MovieDetailsProps> = ({ movie, onClose, onPl
                          >
                             <Plus size={24} className={isFavorite ? 'rotate-45 transition-transform' : 'transition-transform'} />
                          </button>
-                         <button className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-gray-400 text-gray-300 hover:border-white hover:text-white transition-colors">
-                            <ThumbsUp size={20} />
-                         </button>
+                         
+                         {onDelete ? (
+                             <button 
+                                onClick={() => onDelete(movie.id)}
+                                className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-red-900 text-red-500 hover:border-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                title="Delete Upload"
+                             >
+                                <Trash2 size={20} />
+                             </button>
+                         ) : (
+                             <button className="flex items-center justify-center h-12 w-12 rounded-full border-2 border-gray-400 text-gray-300 hover:border-white hover:text-white transition-colors">
+                                <ThumbsUp size={20} />
+                             </button>
+                         )}
+
                          <button onClick={() => setMuted(!muted)} className="ml-auto text-gray-400 hover:text-white transition-colors h-10 w-10 border border-gray-600 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-sm">
                              {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                          </button>

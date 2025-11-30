@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Menu, User, X, ChevronDown } from 'lucide-react';
+import { Search, Bell, Menu, User, X, ChevronDown, Upload } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface NavbarProps {
@@ -7,9 +7,10 @@ interface NavbarProps {
   currentView: ViewState;
   onNavigate: (view: ViewState) => void;
   isScrolled: boolean;
+  onUploadClick: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onSearch, currentView, onNavigate, isScrolled }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onSearch, currentView, onNavigate, isScrolled, onUploadClick }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -72,6 +73,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, currentView, onNavigat
                 <Search size={22} />
               </button>
             )}
+
+            <button 
+                onClick={onUploadClick}
+                className="text-gray-300 hover:text-red-500 transition-colors flex items-center gap-2 group"
+                title="Upload Video"
+            >
+                <Upload size={22} className="group-hover:scale-110 transition-transform" />
+            </button>
             
             <button className="text-gray-300 hover:text-white transition-colors relative group">
               <Bell size={22} className="group-hover:animate-pulse" />
@@ -121,6 +130,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onSearch, currentView, onNavigat
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-4">
+             <button onClick={onUploadClick} className="text-gray-300 hover:text-white">
+                <Upload size={22} />
+             </button>
+
              {/* Mobile User Icon */}
              <button onClick={() => onNavigate('favorites')}>
                 <img 

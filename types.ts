@@ -11,6 +11,7 @@ export interface Movie {
   director: string;
   duration: string;
   matchScore?: number; // Simulated "Match for you" %
+  videoUrl?: string; // Blob URL for uploaded videos
 }
 
 export interface UserProfile {
