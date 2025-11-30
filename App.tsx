@@ -76,6 +76,12 @@ const App: React.FC = () => {
                           if (!newState[item.categoryId].some(m => m.id === item.movie.id)) {
                              newState[item.categoryId] = [item.movie, ...newState[item.categoryId]];
                           }
+                      } else if (item.categoryId === 'uploads') {
+                          // Initialize uploads if empty
+                          const currentUploads = newState['uploads'] || [];
+                          if (!currentUploads.some(m => m.id === item.movie.id)) {
+                               newState['uploads'] = [item.movie, ...currentUploads];
+                          }
                       }
                   });
                   return newState;
@@ -104,7 +110,7 @@ const App: React.FC = () => {
           if (newTrending && newTrending.length > 0) {
              setCategoryMovies(prev => ({ 
                  ...prev, 
-                 'trending': [...newTrending, ...(prev['trending'] || [])] 
+                 'trending': [...(Array.isArray(newTrending) ? newTrending : []), ...(prev['trending'] || [])] 
              }));
           }
       } catch (e) {
@@ -120,7 +126,7 @@ const App: React.FC = () => {
     
     const normalizedQuery = query.toLowerCase();
     
-    // Safer way to flatten arrays compatible with older TS configs
+    // Flatten all movies
     const allMovies: Movie[] = Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]);
     
     const localResults = allMovies.filter((movie: Movie) => 
@@ -128,7 +134,7 @@ const App: React.FC = () => {
         movie.genres.some((g: string) => g.toLowerCase().includes(normalizedQuery))
     );
     
-    // Fix: Explicitly type Map and Array.from to prevent 'unknown[]' inference errors
+    // Deduplicate logic
     const uniqueLocalResults: Movie[] = Array.from(
         new Map<string, Movie>(localResults.map((m) => [m.id, m])).values()
     );
@@ -170,10 +176,49 @@ const App: React.FC = () => {
   };
 
   const handleUploadMovie = (movie: Movie) => {
-      setCategoryMovies(prev => ({
-          ...prev,
-          'uploads': [movie, ...(prev['uploads'] || [])]
-      }));
+      // Map Genre to internal Category ID
+      const genreMapping: Record<string, string> = {
+          'Action': 'action',
+          'Sci-Fi': 'scifi',
+          'Drama': 'drama',
+          'Comedy': 'comedy',
+          'Horror': 'horror',
+          'Animation': 'animation'
+      };
+      
+      const mainGenre = movie.genres[0];
+      const targetCategory = genreMapping[mainGenre];
+
+      setCategoryMovies(prev => {
+          const newState = { ...prev };
+          
+          // 1. Always add to 'My Uploads'
+          newState['uploads'] = [movie, ...(newState['uploads'] || [])];
+
+          // 2. Add to the specific Genre Category if it exists
+          if (targetCategory && newState[targetCategory]) {
+             // Dedupe check just in case
+             if (!newState[targetCategory].some(m => m.id === movie.id)) {
+                 newState[targetCategory] = [movie, ...newState[targetCategory]];
+             }
+          }
+
+          return newState;
+      });
+
+      // Persist to Local Storage
+      const stored = localStorage.getItem('cinestream_custom_movies');
+      const custom: { movie: Movie, categoryId: string }[] = stored ? JSON.parse(stored) : [];
+      
+      // Save entry for Uploads
+      custom.push({ movie, categoryId: 'uploads' });
+      
+      // Save entry for Genre Category
+      if (targetCategory) {
+          custom.push({ movie, categoryId: targetCategory });
+      }
+      
+      localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
   };
   
   const handleDeleteMovie = (movieId: string) => {
@@ -188,7 +233,7 @@ const App: React.FC = () => {
           setFavorites(prev => prev.filter(id => id !== movieId));
           setSelectedMovie(null);
 
-          // Update Persistent Storage (remove from custom list)
+          // Update Persistent Storage (remove all instances of this movie ID)
           const stored = localStorage.getItem('cinestream_custom_movies');
           if (stored) {
               const custom = JSON.parse(stored);
@@ -200,15 +245,32 @@ const App: React.FC = () => {
 
   // Admin Actions
   const handleAdminAddMovie = (movie: Movie, categoryId: string) => {
-      setCategoryMovies(prev => ({
-          ...prev,
-          [categoryId]: [movie, ...(prev[categoryId] || [])]
-      }));
+      setCategoryMovies(prev => {
+          const newState = { ...prev };
+          
+          // 1. Add to selected category (e.g. Trending)
+          if (newState[categoryId]) {
+               newState[categoryId] = [movie, ...(newState[categoryId] || [])];
+          }
+
+          // 2. If it is an upload (has videoUrl or ID starts with upload), add to Uploads as well
+          if (movie.videoUrl || movie.id.startsWith('upload-')) {
+               newState['uploads'] = [movie, ...(newState['uploads'] || [])];
+          }
+
+          return newState;
+      });
 
       // Persist
       const stored = localStorage.getItem('cinestream_custom_movies');
-      const custom = stored ? JSON.parse(stored) : [];
+      const custom: { movie: Movie, categoryId: string }[] = stored ? JSON.parse(stored) : [];
+      
       custom.push({ movie, categoryId });
+      
+      if (movie.videoUrl || movie.id.startsWith('upload-')) {
+          custom.push({ movie, categoryId: 'uploads' });
+      }
+
       localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
   };
 
@@ -225,13 +287,21 @@ const App: React.FC = () => {
   
   // Dynamic Carousel using the current trending list
   const getCarouselMovies = () => {
+      // Prioritize uploads in carousel if user has them? Maybe just trending.
       const trending = categoryMovies['trending'] || [];
       const action = categoryMovies['action'] || [];
-      return [
+      const uploads = categoryMovies['uploads'] || [];
+      
+      // Mix in one upload if available to make it feel personal
+      const mix = [
         INITIAL_FEATURED_MOVIE,
+        ...(uploads.slice(0, 1)), 
         ...(trending.slice(0, 2)),
         ...(action.slice(0, 1))
       ].filter(Boolean);
+      
+      // Dedupe by ID in case featured is in trending
+      return Array.from(new Map(mix.map(m => [m.id, m])).values());
   };
 
   return (
