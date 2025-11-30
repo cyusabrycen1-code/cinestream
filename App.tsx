@@ -4,16 +4,22 @@ import { Hero } from './components/Hero';
 import { MovieRow } from './components/MovieRow';
 import { MovieDetails } from './components/MovieDetails';
 import { Movie, ViewState } from './types';
-import { INITIAL_FEATURED_MOVIE, FALLBACK_MOVIES } from './constants';
+import { 
+  INITIAL_FEATURED_MOVIE, 
+  FALLBACK_MOVIES, 
+  TRENDING_MOVIES, 
+  ACTION_MOVIES, 
+  SCIFI_MOVIES, 
+  DRAMA_MOVIES 
+} from './constants';
 import { fetchMoviesAI } from './services/geminiService';
 import { Loader2 } from 'lucide-react';
 
-// Use FALLBACK_MOVIES initially, but we will try to fetch better ones
 const INITIAL_CATEGORIES = [
   { id: 'trending', title: 'Trending Now' },
   { id: 'action', title: 'High Octane Action' },
   { id: 'scifi', title: 'Sci-Fi & Cyberpunk' },
-  { id: 'drama', title: 'Award Winning Dramas' }
+  { id: 'drama', title: 'Critically Acclaimed Dramas' }
 ];
 
 const App: React.FC = () => {
@@ -21,13 +27,13 @@ const App: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   
-  // Data State
+  // Data State - Initialize with rich static data
   const [featuredMovie, setFeaturedMovie] = useState<Movie>(INITIAL_FEATURED_MOVIE);
   const [categoryMovies, setCategoryMovies] = useState<Record<string, Movie[]>>({
-    'trending': FALLBACK_MOVIES, // Initial population
-    'action': [],
-    'scifi': [],
-    'drama': []
+    'trending': TRENDING_MOVIES,
+    'action': ACTION_MOVIES,
+    'scifi': SCIFI_MOVIES,
+    'drama': DRAMA_MOVIES
   });
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -43,30 +49,25 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Initial Data Load from Gemini
+  // AI Data Refresh (Optional enhancement)
   useEffect(() => {
     const loadData = async () => {
-      // We load categories sequentially or parallel to not hit rate limits too hard if using free tier
-      // For this demo, we'll try to fetch a couple
-      
-      const actionMovies = await fetchMoviesAI('Action Movies 2024');
-      if (actionMovies.length > 0) {
-        setCategoryMovies(prev => ({ ...prev, 'action': actionMovies }));
-      }
+      // Try to fetch new data to keep it fresh, but visuals are already populated
+      try {
+          const actionMovies = await fetchMoviesAI('Action Movies 2025');
+          if (actionMovies.length > 0) {
+            setCategoryMovies(prev => ({ ...prev, 'action': actionMovies }));
+          }
 
-      // Small delay to be gentle
-      await new Promise(r => setTimeout(r, 1000));
+          // Small delay to be gentle
+          await new Promise(r => setTimeout(r, 1500));
 
-      const scifiMovies = await fetchMoviesAI('Sci-Fi Movies Futuristic');
-      if (scifiMovies.length > 0) {
-        setCategoryMovies(prev => ({ ...prev, 'scifi': scifiMovies }));
-      }
-      
-       await new Promise(r => setTimeout(r, 1000));
-
-       const dramaMovies = await fetchMoviesAI('Intense Drama Movies');
-       if (dramaMovies.length > 0) {
-        setCategoryMovies(prev => ({ ...prev, 'drama': dramaMovies }));
+          const scifiMovies = await fetchMoviesAI('Futuristic Sci-Fi Movies');
+          if (scifiMovies.length > 0) {
+            setCategoryMovies(prev => ({ ...prev, 'scifi': scifiMovies }));
+          }
+      } catch (e) {
+          console.log("Using static fallback data completely.");
       }
     };
 
@@ -151,14 +152,19 @@ const App: React.FC = () => {
             ) : searchResults.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 {searchResults.map(movie => (
-                   <div key={movie.id} className="transform hover:scale-105 transition-transform duration-300">
-                      <img 
-                        src={movie.imageUrl} 
-                        alt={movie.title} 
-                        className="rounded-sm shadow-lg cursor-pointer w-full h-auto aspect-[2/3] object-cover border border-zinc-800 hover:border-red-600"
-                        onClick={() => setSelectedMovie(movie)}
-                      />
-                      <p className="mt-2 text-sm font-medium text-gray-300 truncate group-hover:text-white">{movie.title}</p>
+                   <div key={movie.id} className="transform hover:scale-105 transition-transform duration-300 group">
+                      <div className="relative overflow-hidden rounded-sm shadow-lg">
+                          <img 
+                            src={movie.imageUrl} 
+                            alt={movie.title} 
+                            className="w-full h-auto aspect-[2/3] object-cover border border-zinc-800 group-hover:border-red-600 cursor-pointer transition-all duration-300"
+                            onClick={() => setSelectedMovie(movie)}
+                          />
+                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">View</span>
+                           </div>
+                      </div>
+                      <p className="mt-2 text-sm font-medium text-gray-300 truncate group-hover:text-white transition-colors">{movie.title}</p>
                    </div>
                 ))}
               </div>
@@ -202,14 +208,18 @@ const App: React.FC = () => {
         {(currentView === 'movies' || currentView === 'series') && (
             <div className="pt-24 px-4 sm:px-6 lg:px-8 min-h-screen animate-fade-in">
                 <h2 className="text-2xl font-bold mb-6 text-white capitalize">{currentView}</h2>
-                <MovieRow 
-                    title={`Popular ${currentView === 'movies' ? 'Movies' : 'Series'}`}
-                    movies={FALLBACK_MOVIES} 
-                    onMovieClick={setSelectedMovie}
-                />
+                <div className="mb-12">
+                     <h3 className="text-lg font-semibold text-gray-400 mb-4">Trending in {currentView}</h3>
+                     <MovieRow 
+                        title=""
+                        movies={currentView === 'movies' ? [...ACTION_MOVIES, ...SCIFI_MOVIES] : [...DRAMA_MOVIES, ...TRENDING_MOVIES]} 
+                        onMovieClick={setSelectedMovie}
+                    />
+                </div>
+                
                  <div className="text-center text-gray-500 mt-12 flex flex-col items-center gap-4">
                     <Loader2 className="animate-spin text-red-600" size={32} />
-                    <p>Fetching latest {currentView} via AI...</p>
+                    <p>Fetching more {currentView} for you...</p>
                  </div>
             </div>
         )}

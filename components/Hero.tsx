@@ -10,7 +10,7 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ movie, onInfoClick, onPlayClick }) => {
   return (
-    <div className="relative w-full h-[85vh] md:h-[95vh] lg:h-[85vh] overflow-hidden group">
+    <div className="relative w-full h-[85vh] md:h-[95vh] lg:h-[85vh] overflow-hidden group bg-zinc-900">
       {/* Background Image with Ken Burns Effect */}
       <div className="absolute inset-0 overflow-hidden">
         <img 

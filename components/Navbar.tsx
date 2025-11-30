@@ -178,3 +178,18 @@ const NavButton: React.FC<{ label: string; active: boolean; onClick: () => void 
     className={`px-3 py-2 text-sm font-medium transition-colors duration-300 ${
       active ? 'text-white cursor-default font-bold' : 'text-gray-400 hover:text-gray-200'
     }`}
+  >
+    {label}
+  </button>
+);
+
+const MobileNavButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`block w-full text-left px-4 py-3 rounded-md text-base font-medium transition-colors ${
+        active ? 'bg-zinc-800 text-white font-bold border-l-4 border-red-600' : 'text-gray-300 hover:text-white hover:bg-zinc-900'
+    }`}
+  >
+    {label}
+  </button>
+);

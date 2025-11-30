@@ -1,17 +1,34 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Movie } from '../types';
 
-const API_KEY = process.env.API_KEY;
+// Safely retrieve API Key without crashing in browser environments where 'process' might be undefined
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+        return process.env.API_KEY;
+    }
+    return undefined;
+  } catch (e) {
+    console.warn("process.env access failed, running in fallback mode");
+    return undefined;
+  }
+};
+
+const API_KEY = getApiKey();
 
 // Initialize Gemini safely
 let ai: GoogleGenAI | null = null;
 if (API_KEY) {
-  ai = new GoogleGenAI({ apiKey: API_KEY });
+  try {
+    ai = new GoogleGenAI({ apiKey: API_KEY });
+  } catch (e) {
+    console.error("Failed to initialize GoogleGenAI client:", e);
+  }
 }
 
 export const fetchMoviesAI = async (categoryOrQuery: string): Promise<Movie[]> => {
   if (!ai) {
-    console.warn("Gemini API Key missing, returning fallback data.");
+    console.warn("Gemini API Key missing or client not initialized, returning fallback data.");
     return [];
   }
 
