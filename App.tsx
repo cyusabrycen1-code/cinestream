@@ -81,9 +81,12 @@ const App: React.FC = () => {
       // Try to fetch new data to keep it fresh, but visuals are already populated
       try {
           // Just a sample fetch to show AI integration, we rely heavily on static for speed in demo
-          const newTrending = await fetchMoviesAI('Top Trending Movies 2025');
-          if (newTrending.length > 0) {
-             setCategoryMovies(prev => ({ ...prev, 'trending': [...newTrending, ...prev.trending] }));
+          const newTrending: Movie[] = await fetchMoviesAI('Top Trending Movies 2025');
+          if (newTrending && newTrending.length > 0) {
+             setCategoryMovies(prev => ({ 
+                 ...prev, 
+                 'trending': [...newTrending, ...(prev['trending'] || [])] 
+             }));
           }
       } catch (e) {
           console.log("Using static fallback data completely.");

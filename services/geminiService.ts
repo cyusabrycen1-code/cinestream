@@ -1,20 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Movie } from '../types';
 
-// Safely retrieve API Key without crashing in browser environments where 'process' might be undefined
-const getApiKey = () => {
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-        return process.env.API_KEY;
-    }
-    return undefined;
-  } catch (e) {
-    console.warn("process.env access failed, running in fallback mode");
-    return undefined;
-  }
-};
-
-const API_KEY = getApiKey();
+const API_KEY = process.env.API_KEY;
 
 // Initialize Gemini safely
 let ai: GoogleGenAI | null = null;
@@ -74,14 +61,21 @@ export const fetchMoviesAI = async (categoryOrQuery: string): Promise<Movie[]> =
 
     const json = JSON.parse(response.text || "{}");
     
-    if (json.movies) {
+    if (json.movies && Array.isArray(json.movies)) {
       // Hydrate with placeholder images since AI returns text/empty for urls
-      return json.movies.map((m: any, index: number) => ({
-        ...m,
+      return json.movies.map((m: any, index: number): Movie => ({
         id: m.id || `gen-${Math.random()}`,
-        imageUrl: `https://picsum.photos/seed/${m.title.replace(/\s/g, '') + index}/400/600`,
-        backdropUrl: `https://picsum.photos/seed/${m.title.replace(/\s/g, '') + index}_wide/1280/720`,
-        matchScore: m.matchScore || Math.floor(Math.random() * 20) + 80
+        title: m.title || "Untitled",
+        synopsis: m.synopsis || "No description available.",
+        rating: typeof m.rating === 'number' ? m.rating : 5.0,
+        year: typeof m.year === 'number' ? m.year : 2024,
+        genres: Array.isArray(m.genres) ? m.genres : ["Unknown"],
+        imageUrl: `https://picsum.photos/seed/${(m.title || "t").replace(/\s/g, '') + index}/400/600`,
+        backdropUrl: `https://picsum.photos/seed/${(m.title || "t").replace(/\s/g, '') + index}_wide/1280/720`,
+        cast: Array.isArray(m.cast) ? m.cast : [],
+        director: m.director || "Unknown",
+        duration: m.duration || "2h 0m",
+        matchScore: typeof m.matchScore === 'number' ? m.matchScore : 85
       }));
     }
     return [];
