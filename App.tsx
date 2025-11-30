@@ -62,32 +62,60 @@ const App: React.FC = () => {
   const [showAdminAuth, setShowAdminAuth] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
 
-  // Load Persisted User Added Movies on Mount
+  // Robust Load Persisted User Added Movies on Mount
   useEffect(() => {
       const storedMovies = localStorage.getItem('cinestream_custom_movies');
       if (storedMovies) {
           try {
-              const customMovies: { movie: Movie, categoryId: string }[] = JSON.parse(storedMovies);
+              const parsedData = JSON.parse(storedMovies);
+              if (!Array.isArray(parsedData)) return;
+
               setCategoryMovies(prev => {
                   const newState = { ...prev };
-                  customMovies.forEach(item => {
-                      if (newState[item.categoryId]) {
-                          // Prevent duplicates if local storage has dupes
-                          if (!newState[item.categoryId].some(m => m.id === item.movie.id)) {
-                             newState[item.categoryId] = [item.movie, ...newState[item.categoryId]];
+                  
+                  parsedData.forEach((item: any) => {
+                      let movie: Movie | null = null;
+                      let catId: string = 'uploads';
+
+                      // Handle New Format: { movie: Movie, categoryId: string }
+                      if (item && item.movie && item.movie.id) {
+                          movie = item.movie;
+                          catId = item.categoryId || 'uploads';
+                      } 
+                      // Handle Legacy Format: Movie object directly
+                      else if (item && item.id && item.title) {
+                          movie = item as Movie;
+                          // If it has videoUrl, it's an upload
+                          catId = movie.videoUrl ? 'uploads' : 'trending';
+                      }
+
+                      if (movie) {
+                          // Apply to state
+                          if (newState[catId]) {
+                              // Prevent duplicates
+                              if (!newState[catId].some(m => m.id === movie!.id)) {
+                                 newState[catId] = [movie, ...newState[catId]];
+                              }
+                          } else {
+                              // Create category if it doesn't exist (fallback)
+                              newState[catId] = [movie];
                           }
-                      } else if (item.categoryId === 'uploads') {
-                          // Initialize uploads if empty
-                          const currentUploads = newState['uploads'] || [];
-                          if (!currentUploads.some(m => m.id === item.movie.id)) {
-                               newState['uploads'] = [item.movie, ...currentUploads];
+                          
+                          // Also ensure it is in 'uploads' if it has a video URL or ID starts with upload
+                          // This ensures "My Uploads" is always populated with user content
+                          if ((movie.videoUrl || movie.id.startsWith('upload-')) && catId !== 'uploads') {
+                               const currentUploads = newState['uploads'] || [];
+                               if (!currentUploads.some(m => m.id === movie!.id)) {
+                                   newState['uploads'] = [movie, ...currentUploads];
+                               }
                           }
                       }
                   });
                   return newState;
               });
           } catch (e) {
-              console.error("Failed to parse local movies", e);
+              console.error("Failed to parse local movies, clearing storage to prevent crash:", e);
+              localStorage.removeItem('cinestream_custom_movies'); 
           }
       }
   }, []);
@@ -127,16 +155,16 @@ const App: React.FC = () => {
     const normalizedQuery = query.toLowerCase();
     
     // Flatten all movies
-    const allMovies: Movie[] = Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]);
+    const allMovies: Movie[] = (Object.values(categoryMovies) as Movie[][]).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]);
     
     const localResults = allMovies.filter((movie: Movie) => 
-        movie.title.toLowerCase().includes(normalizedQuery) ||
-        movie.genres.some((g: string) => g.toLowerCase().includes(normalizedQuery))
+        (movie.title && movie.title.toLowerCase().includes(normalizedQuery)) ||
+        (movie.genres && movie.genres.some((g: string) => g.toLowerCase().includes(normalizedQuery)))
     );
     
-    // Deduplicate logic
+    // Deduplicate logic with explicit type mapping
     const uniqueLocalResults: Movie[] = Array.from(
-        new Map<string, Movie>(localResults.map((m) => [m.id, m])).values()
+        new Map<string, Movie>(localResults.map((m): [string, Movie] => [m.id, m])).values()
     );
     setSearchResults(uniqueLocalResults);
 
@@ -186,8 +214,8 @@ const App: React.FC = () => {
           'Animation': 'animation'
       };
       
-      const mainGenre = movie.genres[0];
-      const targetCategory = genreMapping[mainGenre];
+      const mainGenre = movie.genres && movie.genres[0] ? movie.genres[0] : '';
+      const targetCategory = genreMapping[mainGenre] || 'trending';
 
       setCategoryMovies(prev => {
           const newState = { ...prev };
@@ -197,7 +225,7 @@ const App: React.FC = () => {
 
           // 2. Add to the specific Genre Category if it exists
           if (targetCategory && newState[targetCategory]) {
-             // Dedupe check just in case
+             // Dedupe check
              if (!newState[targetCategory].some(m => m.id === movie.id)) {
                  newState[targetCategory] = [movie, ...newState[targetCategory]];
              }
@@ -206,19 +234,23 @@ const App: React.FC = () => {
           return newState;
       });
 
-      // Persist to Local Storage
-      const stored = localStorage.getItem('cinestream_custom_movies');
-      const custom: { movie: Movie, categoryId: string }[] = stored ? JSON.parse(stored) : [];
-      
-      // Save entry for Uploads
-      custom.push({ movie, categoryId: 'uploads' });
-      
-      // Save entry for Genre Category
-      if (targetCategory) {
-          custom.push({ movie, categoryId: targetCategory });
+      // Persist to Local Storage (Safe update)
+      try {
+          const stored = localStorage.getItem('cinestream_custom_movies');
+          const custom: { movie: Movie, categoryId: string }[] = stored ? JSON.parse(stored) : [];
+          
+          // Save entry for Uploads
+          custom.push({ movie, categoryId: 'uploads' });
+          
+          // Save entry for Genre Category
+          if (targetCategory) {
+              custom.push({ movie, categoryId: targetCategory });
+          }
+          
+          localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
+      } catch (e) {
+          console.error("Failed to save upload", e);
       }
-      
-      localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
   };
   
   const handleDeleteMovie = (movieId: string) => {
@@ -233,12 +265,21 @@ const App: React.FC = () => {
           setFavorites(prev => prev.filter(id => id !== movieId));
           setSelectedMovie(null);
 
-          // Update Persistent Storage (remove all instances of this movie ID)
-          const stored = localStorage.getItem('cinestream_custom_movies');
-          if (stored) {
-              const custom = JSON.parse(stored);
-              const updated = custom.filter((item: any) => item.movie.id !== movieId);
-              localStorage.setItem('cinestream_custom_movies', JSON.stringify(updated));
+          // Update Persistent Storage
+          try {
+              const stored = localStorage.getItem('cinestream_custom_movies');
+              if (stored) {
+                  const custom = JSON.parse(stored);
+                  // Remove any reference to this movie
+                  const updated = custom.filter((item: any) => {
+                      if (item.movie && item.movie.id) return item.movie.id !== movieId;
+                      if (item.id) return item.id !== movieId; // Legacy check
+                      return true;
+                  });
+                  localStorage.setItem('cinestream_custom_movies', JSON.stringify(updated));
+              }
+          } catch(e) {
+              console.error("Failed to delete from storage", e);
           }
       }
   };
@@ -262,22 +303,26 @@ const App: React.FC = () => {
       });
 
       // Persist
-      const stored = localStorage.getItem('cinestream_custom_movies');
-      const custom: { movie: Movie, categoryId: string }[] = stored ? JSON.parse(stored) : [];
-      
-      custom.push({ movie, categoryId });
-      
-      if (movie.videoUrl || movie.id.startsWith('upload-')) {
-          custom.push({ movie, categoryId: 'uploads' });
-      }
+      try {
+          const stored = localStorage.getItem('cinestream_custom_movies');
+          const custom: { movie: Movie, categoryId: string }[] = stored ? JSON.parse(stored) : [];
+          
+          custom.push({ movie, categoryId });
+          
+          if (movie.videoUrl || movie.id.startsWith('upload-')) {
+              custom.push({ movie, categoryId: 'uploads' });
+          }
 
-      localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
+          localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
+      } catch (e) {
+          console.error("Failed to save admin add", e);
+      }
   };
 
   const getFavoritesMovies = () => {
     const allMovies = [
       INITIAL_FEATURED_MOVIE,
-      ...Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]),
+      ...(Object.values(categoryMovies) as Movie[][]).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]),
       ...searchResults,
       ...FALLBACK_MOVIES
     ];
@@ -287,12 +332,10 @@ const App: React.FC = () => {
   
   // Dynamic Carousel using the current trending list
   const getCarouselMovies = () => {
-      // Prioritize uploads in carousel if user has them? Maybe just trending.
       const trending = categoryMovies['trending'] || [];
       const action = categoryMovies['action'] || [];
       const uploads = categoryMovies['uploads'] || [];
       
-      // Mix in one upload if available to make it feel personal
       const mix = [
         INITIAL_FEATURED_MOVIE,
         ...(uploads.slice(0, 1)), 
@@ -300,7 +343,6 @@ const App: React.FC = () => {
         ...(action.slice(0, 1))
       ].filter(Boolean);
       
-      // Dedupe by ID in case featured is in trending
       return Array.from(new Map(mix.map(m => [m.id, m])).values());
   };
 
@@ -481,7 +523,7 @@ const App: React.FC = () => {
       {/* Admin Dashboard */}
       {showAdmin && (
           <AdminDashboard 
-            movies={Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[])}
+            movies={(Object.values(categoryMovies) as Movie[][]).reduce((acc, movies) => [...acc, ...movies], [] as Movie[])}
             onAddMovie={handleAdminAddMovie}
             onDeleteMovie={handleDeleteMovie}
             onClose={() => setShowAdmin(false)}

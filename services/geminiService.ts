@@ -3,7 +3,7 @@ import { Movie } from '../types';
 
 // Initialize Gemini safely using process.env.API_KEY directly
 let ai: GoogleGenAI | null = null;
-if (process.env.API_KEY) {
+if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
   try {
     ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   } catch (e) {

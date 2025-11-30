@@ -36,7 +36,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ movies, onAddMov
   const posterInputRef = useRef<HTMLInputElement>(null);
   const backdropInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredMovies = movies.filter(m => m.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredMovies = movies.filter(m => 
+      m && m.title && m.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
