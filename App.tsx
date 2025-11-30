@@ -10,16 +10,31 @@ import {
   TRENDING_MOVIES, 
   ACTION_MOVIES, 
   SCIFI_MOVIES, 
-  DRAMA_MOVIES 
+  DRAMA_MOVIES,
+  COMEDY_MOVIES,
+  HORROR_MOVIES,
+  ANIMATION_MOVIES
 } from './constants';
 import { fetchMoviesAI } from './services/geminiService';
 import { Loader2 } from 'lucide-react';
 
 const INITIAL_CATEGORIES = [
   { id: 'trending', title: 'Trending Now' },
-  { id: 'action', title: 'High Octane Action' },
-  { id: 'scifi', title: 'Sci-Fi & Cyberpunk' },
-  { id: 'drama', title: 'Critically Acclaimed Dramas' }
+  { id: 'action', title: 'Adrenaline Rush' },
+  { id: 'scifi', title: 'Futuristic Worlds' },
+  { id: 'animation', title: 'Animation & Fantasy' },
+  { id: 'comedy', title: 'Laugh Out Loud' },
+  { id: 'horror', title: 'Chills & Thrills' },
+  { id: 'drama', title: 'Critically Acclaimed' }
+];
+
+// Carousel movies - Take top 1 from each major category + featured
+const CAROUSEL_MOVIES = [
+    INITIAL_FEATURED_MOVIE,
+    TRENDING_MOVIES[0],
+    ACTION_MOVIES[2], // Bullet Train 2
+    SCIFI_MOVIES[0],
+    ANIMATION_MOVIES[0]
 ];
 
 const App: React.FC = () => {
@@ -28,12 +43,14 @@ const App: React.FC = () => {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   
   // Data State - Initialize with rich static data
-  const [featuredMovie, setFeaturedMovie] = useState<Movie>(INITIAL_FEATURED_MOVIE);
   const [categoryMovies, setCategoryMovies] = useState<Record<string, Movie[]>>({
     'trending': TRENDING_MOVIES,
     'action': ACTION_MOVIES,
     'scifi': SCIFI_MOVIES,
-    'drama': DRAMA_MOVIES
+    'drama': DRAMA_MOVIES,
+    'comedy': COMEDY_MOVIES,
+    'horror': HORROR_MOVIES,
+    'animation': ANIMATION_MOVIES
   });
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -54,17 +71,10 @@ const App: React.FC = () => {
     const loadData = async () => {
       // Try to fetch new data to keep it fresh, but visuals are already populated
       try {
-          const actionMovies = await fetchMoviesAI('Action Movies 2025');
-          if (actionMovies.length > 0) {
-            setCategoryMovies(prev => ({ ...prev, 'action': actionMovies }));
-          }
-
-          // Small delay to be gentle
-          await new Promise(r => setTimeout(r, 1500));
-
-          const scifiMovies = await fetchMoviesAI('Futuristic Sci-Fi Movies');
-          if (scifiMovies.length > 0) {
-            setCategoryMovies(prev => ({ ...prev, 'scifi': scifiMovies }));
+          // Just a sample fetch to show AI integration, we rely heavily on static for speed in demo
+          const newTrending = await fetchMoviesAI('Top Trending Movies 2025');
+          if (newTrending.length > 0) {
+             setCategoryMovies(prev => ({ ...prev, 'trending': [...newTrending, ...prev.trending] }));
           }
       } catch (e) {
           console.log("Using static fallback data completely.");
@@ -96,7 +106,7 @@ const App: React.FC = () => {
   const getFavoritesMovies = () => {
     // Collect all movies currently in state to find full objects for favorite IDs
     const allMovies = [
-      featuredMovie,
+      ...CAROUSEL_MOVIES,
       ...Object.values(categoryMovies).flat(),
       ...searchResults,
       ...FALLBACK_MOVIES
@@ -122,12 +132,12 @@ const App: React.FC = () => {
         {currentView === 'home' && (
           <div className="animate-fade-in">
             <Hero 
-                movie={featuredMovie} 
+                movies={CAROUSEL_MOVIES} 
                 onInfoClick={setSelectedMovie} 
                 onPlayClick={handlePlayMovie}
             />
             
-            <div className="relative z-20 -mt-24 md:-mt-48 pl-0 space-y-8 bg-gradient-to-t from-black via-black to-transparent pt-12">
+            <div className="relative z-20 -mt-24 md:-mt-48 pl-0 space-y-4 bg-gradient-to-t from-black via-black to-transparent pt-12">
                {INITIAL_CATEGORIES.map(cat => (
                   <MovieRow 
                     key={cat.id} 

@@ -313,10 +313,232 @@ export const DRAMA_MOVIES: Movie[] = [
   }
 ];
 
+export const COMEDY_MOVIES: Movie[] = [
+  {
+    id: 'c1',
+    title: 'The Big Misunderstanding',
+    synopsis: 'Two strangers accidentally swap phones at the airport and end up living each other\'s chaotic lives for a week.',
+    rating: 7.8,
+    year: 2024,
+    genres: ['Comedy', 'Romance'],
+    imageUrl: 'https://picsum.photos/seed/misunder/400/600',
+    backdropUrl: 'https://picsum.photos/seed/misunder_wide/1280/720',
+    cast: ['Kevin H.', 'Awkwafina'],
+    director: 'Paul F.',
+    duration: '1h 45m',
+    matchScore: 92
+  },
+  {
+    id: 'c2',
+    title: 'Office Space 2099',
+    synopsis: 'Even in the future, the printer still doesn\'t work. A satire on corporate culture on a space station.',
+    rating: 8.2,
+    year: 2023,
+    genres: ['Comedy', 'Sci-Fi'],
+    imageUrl: 'https://picsum.photos/seed/office/400/600',
+    backdropUrl: 'https://picsum.photos/seed/office_wide/1280/720',
+    cast: ['Steve C.', 'Bill H.'],
+    director: 'Armando I.',
+    duration: '1h 55m',
+    matchScore: 88
+  },
+  {
+    id: 'c3',
+    title: 'Wedding Crashers: The Reunion',
+    synopsis: 'They are back, older but definitely not wiser, crashing the biggest wedding of the decade.',
+    rating: 7.5,
+    year: 2024,
+    genres: ['Comedy'],
+    imageUrl: 'https://picsum.photos/seed/wedding/400/600',
+    backdropUrl: 'https://picsum.photos/seed/wedding_wide/1280/720',
+    cast: ['Owen W.', 'Vince V.'],
+    director: 'David D.',
+    duration: '2h 02m',
+    matchScore: 85
+  },
+  {
+    id: 'c4',
+    title: 'Game Night Gone Wrong',
+    synopsis: 'A friendly neighborhood game night turns into a real-life mystery when the host actually disappears.',
+    rating: 7.9,
+    year: 2022,
+    genres: ['Comedy', 'Mystery'],
+    imageUrl: 'https://picsum.photos/seed/gamenight/400/600',
+    backdropUrl: 'https://picsum.photos/seed/gamenight_wide/1280/720',
+    cast: ['Jason B.', 'Rachel M.'],
+    director: 'John F.',
+    duration: '1h 50m',
+    matchScore: 90
+  },
+  {
+    id: 'c5',
+    title: 'Super Dad',
+    synopsis: 'A scientist accidentally gives himself superpowers but has to hide them from his teenage kids.',
+    rating: 7.0,
+    year: 2023,
+    genres: ['Comedy', 'Family'],
+    imageUrl: 'https://picsum.photos/seed/superdad/400/600',
+    backdropUrl: 'https://picsum.photos/seed/superdad_wide/1280/720',
+    cast: ['Will F.', 'Tina F.'],
+    director: 'Adam M.',
+    duration: '1h 38m',
+    matchScore: 82
+  }
+];
+
+export const HORROR_MOVIES: Movie[] = [
+  {
+    id: 'h1',
+    title: 'Whispers in the Walls',
+    synopsis: 'A family moves into a renovated victorian home, only to realize the renovations didn\'t cover up the past.',
+    rating: 8.1,
+    year: 2024,
+    genres: ['Horror', 'Thriller'],
+    imageUrl: 'https://picsum.photos/seed/whispers/400/600',
+    backdropUrl: 'https://picsum.photos/seed/whispers_wide/1280/720',
+    cast: ['Vera F.', 'Patrick W.'],
+    director: 'James W.',
+    duration: '2h 12m',
+    matchScore: 91
+  },
+  {
+    id: 'h2',
+    title: 'The Loop',
+    synopsis: 'A group of friends gets stuck in a time loop inside a haunted carnival.',
+    rating: 7.6,
+    year: 2023,
+    genres: ['Horror', 'Sci-Fi'],
+    imageUrl: 'https://picsum.photos/seed/loop/400/600',
+    backdropUrl: 'https://picsum.photos/seed/loop_wide/1280/720',
+    cast: ['Jenna O.', 'Finn W.'],
+    director: 'Jordan P.',
+    duration: '1h 45m',
+    matchScore: 87
+  },
+  {
+    id: 'h3',
+    title: 'Deep Water',
+    synopsis: 'Divers exploring a cave system encounter a species that has evolved in total darkness.',
+    rating: 7.4,
+    year: 2022,
+    genres: ['Horror', 'Adventure'],
+    imageUrl: 'https://picsum.photos/seed/deepwater/400/600',
+    backdropUrl: 'https://picsum.photos/seed/deepwater_wide/1280/720',
+    cast: ['Kristen S.', 'Vincent C.'],
+    director: 'William E.',
+    duration: '1h 55m',
+    matchScore: 84
+  },
+  {
+    id: 'h4',
+    title: 'Night Shift',
+    synopsis: 'A security guard at a wax museum starts to suspect the exhibits are moving when he looks away.',
+    rating: 6.9,
+    year: 2024,
+    genres: ['Horror'],
+    imageUrl: 'https://picsum.photos/seed/wax/400/600',
+    backdropUrl: 'https://picsum.photos/seed/wax_wide/1280/720',
+    cast: ['Evan P.', 'Sarah P.'],
+    director: 'David S.',
+    duration: '1h 30m',
+    matchScore: 78
+  },
+  {
+    id: 'h5',
+    title: 'Viral',
+    synopsis: 'A cursed social media trend causes hallucinations in anyone who watches the video.',
+    rating: 7.2,
+    year: 2023,
+    genres: ['Horror', 'Mystery'],
+    imageUrl: 'https://picsum.photos/seed/viral/400/600',
+    backdropUrl: 'https://picsum.photos/seed/viral_wide/1280/720',
+    cast: ['Mia G.', 'Alex W.'],
+    director: 'Ti W.',
+    duration: '1h 42m',
+    matchScore: 80
+  }
+];
+
+export const ANIMATION_MOVIES: Movie[] = [
+  {
+    id: 'an1',
+    title: 'Sky Sailors',
+    synopsis: 'In a world of floating islands, a young pilot dreams of reaching the surface of the planet below.',
+    rating: 8.8,
+    year: 2024,
+    genres: ['Animation', 'Adventure'],
+    imageUrl: 'https://picsum.photos/seed/skysail/400/600',
+    backdropUrl: 'https://picsum.photos/seed/skysail_wide/1280/720',
+    cast: ['Tom H.', 'Zendaya'],
+    director: 'Hayao M.',
+    duration: '1h 55m',
+    matchScore: 96
+  },
+  {
+    id: 'an2',
+    title: 'The Clockwork City',
+    synopsis: 'A robot with a heart of gold tries to save his mechanical city from rusting away.',
+    rating: 8.5,
+    year: 2023,
+    genres: ['Animation', 'Family'],
+    imageUrl: 'https://picsum.photos/seed/clockwork/400/600',
+    backdropUrl: 'https://picsum.photos/seed/clockwork_wide/1280/720',
+    cast: ['Chris P.', 'Anya T.'],
+    director: 'Brad B.',
+    duration: '1h 40m',
+    matchScore: 93
+  },
+  {
+    id: 'an3',
+    title: 'Spirit of the Forest',
+    synopsis: 'A girl gets lost in an ancient forest and must help the spirits protect their home from loggers.',
+    rating: 8.3,
+    year: 2022,
+    genres: ['Animation', 'Fantasy'],
+    imageUrl: 'https://picsum.photos/seed/spirit/400/600',
+    backdropUrl: 'https://picsum.photos/seed/spirit_wide/1280/720',
+    cast: ['Saoirse R.', 'Dev P.'],
+    director: 'Tomm M.',
+    duration: '1h 48m',
+    matchScore: 90
+  },
+  {
+    id: 'an4',
+    title: 'Cyber Ninja',
+    synopsis: 'A futuristic ninja fights to take down a corrupt mega-corporation in Neo-Tokyo.',
+    rating: 8.0,
+    year: 2024,
+    genres: ['Animation', 'Action'],
+    imageUrl: 'https://picsum.photos/seed/ninja/400/600',
+    backdropUrl: 'https://picsum.photos/seed/ninja_wide/1280/720',
+    cast: ['Simu L.', 'Karen F.'],
+    director: 'Genndy T.',
+    duration: '1h 35m',
+    matchScore: 88
+  },
+  {
+    id: 'an5',
+    title: 'Barnyard Beats',
+    synopsis: 'Farm animals start a rock band to save their farm from foreclosure.',
+    rating: 7.5,
+    year: 2023,
+    genres: ['Animation', 'Comedy'],
+    imageUrl: 'https://picsum.photos/seed/barn/400/600',
+    backdropUrl: 'https://picsum.photos/seed/barn_wide/1280/720',
+    cast: ['Jack B.', 'Seth R.'],
+    director: 'Garth J.',
+    duration: '1h 30m',
+    matchScore: 85
+  }
+];
+
 // Fallback is now a mix of everything
 export const FALLBACK_MOVIES: Movie[] = [
     ...TRENDING_MOVIES,
     ...ACTION_MOVIES,
     ...SCIFI_MOVIES,
-    ...DRAMA_MOVIES
+    ...DRAMA_MOVIES,
+    ...COMEDY_MOVIES,
+    ...HORROR_MOVIES,
+    ...ANIMATION_MOVIES
 ];
