@@ -1,13 +1,11 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Movie } from '../types';
 
-const API_KEY = process.env.API_KEY;
-
-// Initialize Gemini safely
+// Initialize Gemini safely using process.env.API_KEY directly
 let ai: GoogleGenAI | null = null;
-if (API_KEY) {
+if (process.env.API_KEY) {
   try {
-    ai = new GoogleGenAI({ apiKey: API_KEY });
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   } catch (e) {
     console.error("Failed to initialize GoogleGenAI client:", e);
   }
@@ -16,7 +14,7 @@ if (API_KEY) {
 export const fetchMoviesAI = async (categoryOrQuery: string): Promise<Movie[]> => {
   if (!ai) {
     console.warn("Gemini API Key missing or client not initialized, returning fallback data.");
-    return [];
+    return [] as Movie[];
   }
 
   try {
@@ -27,7 +25,7 @@ export const fetchMoviesAI = async (categoryOrQuery: string): Promise<Movie[]> =
       Make the data look realistic.
     `;
 
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
@@ -63,7 +61,7 @@ export const fetchMoviesAI = async (categoryOrQuery: string): Promise<Movie[]> =
     
     if (json.movies && Array.isArray(json.movies)) {
       // Hydrate with placeholder images since AI returns text/empty for urls
-      return json.movies.map((m: any, index: number): Movie => ({
+      const movies: Movie[] = json.movies.map((m: any, index: number): Movie => ({
         id: m.id || `gen-${Math.random()}`,
         title: m.title || "Untitled",
         synopsis: m.synopsis || "No description available.",
@@ -75,13 +73,15 @@ export const fetchMoviesAI = async (categoryOrQuery: string): Promise<Movie[]> =
         cast: Array.isArray(m.cast) ? m.cast : [],
         director: m.director || "Unknown",
         duration: m.duration || "2h 0m",
-        matchScore: typeof m.matchScore === 'number' ? m.matchScore : 85
+        matchScore: typeof m.matchScore === 'number' ? m.matchScore : 85,
+        videoUrl: undefined
       }));
+      return movies;
     }
-    return [];
+    return [] as Movie[];
 
   } catch (error) {
     console.error("Gemini fetch failed:", error);
-    return [];
+    return [] as Movie[];
   }
 };

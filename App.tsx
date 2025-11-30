@@ -5,6 +5,8 @@ import { MovieRow } from './components/MovieRow';
 import { MovieDetails } from './components/MovieDetails';
 import { UploadModal } from './components/UploadModal';
 import { VideoPlayer } from './components/VideoPlayer';
+import { AdminDashboard } from './components/AdminDashboard';
+import { AdminAuthModal } from './components/AdminAuthModal';
 import { Movie, ViewState } from './types';
 import { 
   INITIAL_FEATURED_MOVIE, 
@@ -31,21 +33,12 @@ const INITIAL_CATEGORIES = [
   { id: 'drama', title: 'Critically Acclaimed' }
 ];
 
-// Carousel movies - Take top 1 from each major category + featured
-const CAROUSEL_MOVIES = [
-    INITIAL_FEATURED_MOVIE,
-    TRENDING_MOVIES[0],
-    ACTION_MOVIES[2], // Bullet Train 2
-    SCIFI_MOVIES[0],
-    ANIMATION_MOVIES[0]
-];
-
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('home');
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   
-  // Data State - Initialize with rich static data
+  // Data State
   const [categoryMovies, setCategoryMovies] = useState<Record<string, Movie[]>>({
     'trending': TRENDING_MOVIES,
     'action': ACTION_MOVIES,
@@ -65,6 +58,34 @@ const App: React.FC = () => {
   const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null);
   const [playingVideoTitle, setPlayingVideoTitle] = useState<string>('');
 
+  // Admin State
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  // Load Persisted User Added Movies on Mount
+  useEffect(() => {
+      const storedMovies = localStorage.getItem('cinestream_custom_movies');
+      if (storedMovies) {
+          try {
+              const customMovies: { movie: Movie, categoryId: string }[] = JSON.parse(storedMovies);
+              setCategoryMovies(prev => {
+                  const newState = { ...prev };
+                  customMovies.forEach(item => {
+                      if (newState[item.categoryId]) {
+                          // Prevent duplicates if local storage has dupes
+                          if (!newState[item.categoryId].some(m => m.id === item.movie.id)) {
+                             newState[item.categoryId] = [item.movie, ...newState[item.categoryId]];
+                          }
+                      }
+                  });
+                  return newState;
+              });
+          } catch (e) {
+              console.error("Failed to parse local movies", e);
+          }
+      }
+  }, []);
+
   // Handlers
   const handleScroll = () => {
     setIsScrolled(window.scrollY > 20);
@@ -75,12 +96,10 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // AI Data Refresh (Optional enhancement)
+  // AI Data Refresh
   useEffect(() => {
     const loadData = async () => {
-      // Try to fetch new data to keep it fresh, but visuals are already populated
       try {
-          // Just a sample fetch to show AI integration, we rely heavily on static for speed in demo
           const newTrending: Movie[] = await fetchMoviesAI('Top Trending Movies 2025');
           if (newTrending && newTrending.length > 0) {
              setCategoryMovies(prev => ({ 
@@ -89,10 +108,9 @@ const App: React.FC = () => {
              }));
           }
       } catch (e) {
-          console.log("Using static fallback data completely.");
+          console.log("Using static fallback data.");
       }
     };
-
     loadData();
   }, []);
 
@@ -100,28 +118,26 @@ const App: React.FC = () => {
     setIsSearching(true);
     setCurrentView('search');
     
-    // 1. Local Search (Includes Uploads & Static Data)
-    // This ensures your uploaded video appears in search results immediately
     const normalizedQuery = query.toLowerCase();
-    const allMovies: Movie[] = Object.values(categoryMovies).flat();
+    
+    // Safer way to flatten arrays compatible with older TS configs
+    const allMovies: Movie[] = Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]);
     
     const localResults = allMovies.filter((movie: Movie) => 
         movie.title.toLowerCase().includes(normalizedQuery) ||
         movie.genres.some((g: string) => g.toLowerCase().includes(normalizedQuery))
     );
     
-    // De-duplicate local results by ID
-    const uniqueLocalResults = Array.from(new Map(localResults.map((m: Movie) => [m.id, m])).values());
-    
-    // Set local results immediately for responsiveness
+    // Fix: Explicitly type Map and Array.from to prevent 'unknown[]' inference errors
+    const uniqueLocalResults: Movie[] = Array.from(
+        new Map<string, Movie>(localResults.map((m) => [m.id, m])).values()
+    );
     setSearchResults(uniqueLocalResults);
 
-    // 2. AI Search (Append results)
     try {
-        const aiResults = await fetchMoviesAI(query);
+        const aiResults: Movie[] = await fetchMoviesAI(query);
         setSearchResults(prev => {
             const combined = [...prev];
-            // Only add AI results that don't duplicate existing IDs or exact titles
             aiResults.forEach(aiMovie => {
                 if (!combined.some(m => m.id === aiMovie.id || m.title === aiMovie.title)) {
                     combined.push(aiMovie);
@@ -145,13 +161,10 @@ const App: React.FC = () => {
   const handlePlayMovie = (movie?: Movie) => {
     const target = movie || selectedMovie;
     if (target?.videoUrl) {
-        // If it's an uploaded video with a real URL, play it
         setPlayingVideoTitle(target.title);
         setPlayingVideoUrl(target.videoUrl);
-        // If details modal is open, close it
         setSelectedMovie(null);
     } else {
-        // Fallback for demo movies
         alert(`Starting playback for: ${target?.title}. (Demo Mode)`);
     }
   };
@@ -159,35 +172,66 @@ const App: React.FC = () => {
   const handleUploadMovie = (movie: Movie) => {
       setCategoryMovies(prev => ({
           ...prev,
-          'uploads': [movie, ...prev.uploads]
+          'uploads': [movie, ...(prev['uploads'] || [])]
       }));
   };
   
   const handleDeleteMovie = (movieId: string) => {
-      if (confirm('Are you sure you want to delete this video?')) {
-          setCategoryMovies(prev => ({
-              ...prev,
-              'uploads': prev.uploads.filter(m => m.id !== movieId)
-          }));
+      if (confirm('Are you sure you want to delete this content?')) {
+          setCategoryMovies(prev => {
+            const newState = { ...prev };
+            Object.keys(newState).forEach(key => {
+                newState[key] = newState[key].filter(m => m.id !== movieId);
+            });
+            return newState;
+          });
           setFavorites(prev => prev.filter(id => id !== movieId));
-          
-          if (selectedMovie?.id === movieId) {
-              setSelectedMovie(null);
+          setSelectedMovie(null);
+
+          // Update Persistent Storage (remove from custom list)
+          const stored = localStorage.getItem('cinestream_custom_movies');
+          if (stored) {
+              const custom = JSON.parse(stored);
+              const updated = custom.filter((item: any) => item.movie.id !== movieId);
+              localStorage.setItem('cinestream_custom_movies', JSON.stringify(updated));
           }
       }
   };
 
+  // Admin Actions
+  const handleAdminAddMovie = (movie: Movie, categoryId: string) => {
+      setCategoryMovies(prev => ({
+          ...prev,
+          [categoryId]: [movie, ...(prev[categoryId] || [])]
+      }));
+
+      // Persist
+      const stored = localStorage.getItem('cinestream_custom_movies');
+      const custom = stored ? JSON.parse(stored) : [];
+      custom.push({ movie, categoryId });
+      localStorage.setItem('cinestream_custom_movies', JSON.stringify(custom));
+  };
+
   const getFavoritesMovies = () => {
-    // Collect all movies currently in state to find full objects for favorite IDs
     const allMovies = [
-      ...CAROUSEL_MOVIES,
-      ...Object.values(categoryMovies).flat(),
+      INITIAL_FEATURED_MOVIE,
+      ...Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[]),
       ...searchResults,
       ...FALLBACK_MOVIES
     ];
-    // De-duplicate by ID
     const uniqueMovies = Array.from(new Map(allMovies.map(m => [m.id, m])).values());
     return uniqueMovies.filter(m => favorites.includes(m.id));
+  };
+  
+  // Dynamic Carousel using the current trending list
+  const getCarouselMovies = () => {
+      const trending = categoryMovies['trending'] || [];
+      const action = categoryMovies['action'] || [];
+      return [
+        INITIAL_FEATURED_MOVIE,
+        ...(trending.slice(0, 2)),
+        ...(action.slice(0, 1))
+      ].filter(Boolean);
   };
 
   return (
@@ -207,9 +251,9 @@ const App: React.FC = () => {
         {currentView === 'home' && (
           <div className="animate-fade-in">
             <Hero 
-                movies={CAROUSEL_MOVIES} 
+                movies={getCarouselMovies()} 
                 onInfoClick={setSelectedMovie} 
-                onPlayClick={() => handlePlayMovie(CAROUSEL_MOVIES[0])}
+                onPlayClick={() => handlePlayMovie(getCarouselMovies()[0])}
             />
             
             <div className="relative z-20 -mt-24 md:-mt-48 pl-0 space-y-4 bg-gradient-to-t from-black via-black to-transparent pt-12">
@@ -302,7 +346,7 @@ const App: React.FC = () => {
                      <h3 className="text-lg font-semibold text-gray-400 mb-4">Trending in {currentView}</h3>
                      <MovieRow 
                         title=""
-                        movies={currentView === 'movies' ? [...ACTION_MOVIES, ...SCIFI_MOVIES] : [...DRAMA_MOVIES, ...TRENDING_MOVIES]} 
+                        movies={currentView === 'movies' ? [...(categoryMovies['action'] || []), ...(categoryMovies['scifi'] || [])] : [...(categoryMovies['drama'] || []), ...(categoryMovies['trending'] || [])]} 
                         onMovieClick={setSelectedMovie}
                     />
                 </div>
@@ -319,10 +363,17 @@ const App: React.FC = () => {
       {/* Footer */}
       <footer className="bg-black border-t border-zinc-900 py-12 px-4 text-center text-gray-500 text-sm">
         <p>&copy; 2024 CineStream AI. All rights reserved.</p>
-        <div className="flex justify-center gap-6 mt-4">
+        <div className="flex justify-center gap-6 mt-4 items-center">
             <span className="hover:text-red-500 transition-colors cursor-pointer">Terms</span>
             <span className="hover:text-red-500 transition-colors cursor-pointer">Privacy</span>
             <span className="hover:text-red-500 transition-colors cursor-pointer">Help</span>
+            <span className="w-1 h-1 bg-gray-700 rounded-full"></span>
+            <button 
+                onClick={() => setShowAdminAuth(true)} 
+                className="hover:text-red-500 transition-colors cursor-pointer text-xs opacity-50 hover:opacity-100 uppercase tracking-widest font-bold focus:outline-none"
+            >
+                Admin Login
+            </button>
         </div>
       </footer>
 
@@ -345,8 +396,29 @@ const App: React.FC = () => {
             }}
           />
       )}
+      
+      {/* Admin Auth Modal */}
+      {showAdminAuth && (
+          <AdminAuthModal 
+            onClose={() => setShowAdminAuth(false)}
+            onSuccess={() => {
+                setShowAdminAuth(false);
+                setShowAdmin(true);
+            }}
+          />
+      )}
 
-      {/* Modal */}
+      {/* Admin Dashboard */}
+      {showAdmin && (
+          <AdminDashboard 
+            movies={Object.values(categoryMovies).reduce((acc, movies) => [...acc, ...movies], [] as Movie[])}
+            onAddMovie={handleAdminAddMovie}
+            onDeleteMovie={handleDeleteMovie}
+            onClose={() => setShowAdmin(false)}
+          />
+      )}
+
+      {/* Movie Details Modal */}
       {selectedMovie && (
         <MovieDetails 
           movie={selectedMovie} 
@@ -354,7 +426,7 @@ const App: React.FC = () => {
           onPlay={() => handlePlayMovie(selectedMovie)}
           isFavorite={favorites.includes(selectedMovie.id)}
           onToggleFavorite={handleToggleFavorite}
-          onDelete={selectedMovie.id.startsWith('upload-') ? handleDeleteMovie : undefined}
+          onDelete={(selectedMovie.id.startsWith('upload-') || selectedMovie.id.startsWith('custom-')) ? handleDeleteMovie : undefined}
         />
       )}
     </div>
